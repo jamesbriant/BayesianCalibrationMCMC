@@ -17,7 +17,7 @@ class Parameter():
     def __post_init__(self) -> None:
         if self.initial_values.ndim != 1:
             raise ValueError(f"initial_values must be 1-dimensional. {self.initial_values.ndim}-dimensional prodived")
-        self.values = self.initial_values
+        self.values = self.initial_values.astype('float32')
         self.len = len(self.initial_values)
         self.prior_densities = np.zeros(self.len)
 
