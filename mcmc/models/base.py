@@ -81,7 +81,12 @@ class BaseModel(ABC):
     def calc_V_d(self, data: Data) -> None:
         """
         """
-        self.V_d_chol = np.linalg.cholesky(self.V_d)
+        try:
+            self.V_d_chol = np.linalg.cholesky(self.V_d)
+        except Exception as e:
+            print("The eigenvalues of self.V_d are:")
+            print(np.linalg.eigvalsh(self.V_d))
+            raise e
 
 
     def calc_loglike(self, data: Data) -> None:
