@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 
@@ -9,6 +10,10 @@ class Parameter():
     name: str
     initial_values: np.ndarray
     positive: bool = False
+    bounded_below: float = False
+    bounded_above: float = False
+    transform_forwards: Callable[[float], float] = lambda x: x
+    transform_backwards: Callable[[float], float] = lambda x: x
     values: np.ndarray = field(init=False)
     len: int = field(init=False, repr=False)
     prior_densities: np.ndarray = field(init=False)
@@ -49,21 +54,23 @@ class Parameter():
     
     def __next__(self) -> float:
         self._index += 1
-
         if self._index == self.len:
             raise StopIteration
-
-        # return {
-        #     'index': self._index,
-        #     'value': self.values[self._index]
-        # }
         return self.values[self._index]
 
 
     def is_proposal_acceptable(self, proposal: float) -> bool:
         """
         """
-        if self.positive == True and proposal <= 0:
+        transformed_proposal = self.transform_forwards(proposal)
+
+        if self.positive == True and transformed_proposal <= 0:
+            return False
+        
+        if self.bounded_below is not False and transformed_proposal < self.bounded_below:
+            return False
+        
+        if self.bounded_above is not False and transformed_proposal > self.bounded_above:
             return False
 
         return True

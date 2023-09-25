@@ -8,7 +8,8 @@ from mcmc.data import Data
 
 
 class BaseModel(ABC):
-    """Class representing a model based on the Kennedy & O'Hagan (2001) framework.
+    """Class representing a the minimum requirements for the MCMC operations.
+    Build on top of this class.
     """
 
     #ORDERED LIST FOR MCMC
@@ -29,10 +30,6 @@ class BaseModel(ABC):
             raise ValueError(f"Parameter names must match exactly for the chosen model. {self._accepted_params}")
 
         self.params = params
-
-        self.m_d = None
-        self.V_d = None
-        self.V_d_chol = None
         self._prior_densities = {}
 
         self.total_param_count_long = 0
@@ -44,14 +41,14 @@ class BaseModel(ABC):
 
     @abstractmethod
     def prepare_for_mcmc(self, data: Data) -> None:
-        """
+        """Evaluates the model's log-posterior given the initial parameter values.
+        Subclasses should ensure all intermediary steps for calculating the model posterior
+        are placed in this method.
         """
         #Calculate priors
         for param in self.params.values():
             self.calc_prior(param)
             
-        self.calc_m_d(data)
-        self.calc_V_d(data)
         self.calc_logpost(data)
 
 
@@ -63,39 +60,18 @@ class BaseModel(ABC):
         new_value: float,
         data: Data,
     ) -> None:
-        """Updates the parameter and recalculates any necessary components
+        """Updates the Parameter value and recalculates the prior distribution.
+        Subclasses should also update any additional requirements, such as the log-posterior.
         """
         param.update(index, new_value)
-
         self.calc_prior(param)
 
 
     @abstractmethod
-    def calc_m_d(self, data: Data) -> None:
-        """
+    def calc_loglike(self, data: Data) -> None:
+        """This method depends on your model!
         """
         pass
-
-
-    @abstractmethod
-    def calc_V_d(self, data: Data) -> None:
-        """
-        """
-        try:
-            self.V_d_chol = np.linalg.cholesky(self.V_d)
-        except Exception as e:
-            print("The eigenvalues of self.V_d are:")
-            print(np.linalg.eigvalsh(self.V_d))
-            raise e
-
-
-    def calc_loglike(self, data: Data) -> None:
-        """
-        """
-        u = np.linalg.solve(self.V_d_chol, data.d - self.m_d)
-        Q = np.dot(u, u.T)
-        logdet = np.sum(np.log(np.diag(self.V_d_chol)))
-        self.loglike = -logdet - 0.5*Q
 
 
     @abstractmethod
@@ -105,6 +81,7 @@ class BaseModel(ABC):
 
     
     def calc_logpost(self, data: Data):
+        """Evaluates the log-posterior of the model given the current parameter values."""
         self.calc_loglike(data)
         self.logpost = np.sum(list(self._prior_densities.values())) + self.loglike
 
@@ -127,7 +104,7 @@ class BaseModel(ABC):
 
 
     def get_model_params(self) -> dict:
-        """
+        """Returns dictionary of parameter names and values.
         """
         output = {}
         for name, param in self.params.items():

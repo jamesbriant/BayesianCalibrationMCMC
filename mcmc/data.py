@@ -12,7 +12,7 @@ class Data:
     z: np.ndarray
 
     def __post_init__(self) -> None:
-        self.d = np.hstack([self.z, self.y])
+        self.d = np.vstack([self.z, self.y])
 
         self.n = self.z.shape[0]
         self.m = self.y.shape[0]
