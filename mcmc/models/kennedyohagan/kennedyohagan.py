@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
-# from scipy.stats import norm, beta, gamma
+from scipy.linalg import cho_factor, cho_solve
 
 from mcmc.data import Data
 from mcmc.models.base import BaseModel
@@ -104,12 +104,14 @@ class KennedyOHagan(BaseModel):
         self.V_d[:data.n, :data.n] += self._sigma_delta + self._sigma_epsilon
         self.V_d[data.n:, data.n:] += self._sigma_epsilon_eta
         
-        try:
-            self.V_d_chol = np.linalg.cholesky(self.V_d)
-        except Exception as e:
-            print("The eigenvalues of self.V_d are:")
-            print(np.linalg.eigvalsh(self.V_d))
-            raise e
+        self.V_d_chol = cho_factor(self.V_d)
+
+        # try:
+        #     self.V_d_chol = np.linalg.cholesky(self.V_d)
+        # except Exception as e:
+        #     print("The eigenvalues of self.V_d are:")
+        #     print(np.linalg.eigvalsh(self.V_d))
+        #     raise e
         
     
     @abstractmethod
@@ -143,7 +145,9 @@ class KennedyOHagan(BaseModel):
     def calc_loglike(self, data: Data) -> None:
         """Kennedy & O'Hagan model log-likelihood
         """
-        u = np.linalg.solve(self.V_d_chol, data.d - self.m_d)
-        Q = np.dot(u.T, u)[0,0]
-        logdet = np.sum(np.log(np.diag(self.V_d_chol)))
+        # u = np.linalg.solve(self.V_d_chol, data.d - self.m_d)
+        u = cho_solve(self.V_d_chol, data.d - self.m_d)
+        Q = np.sum(u**2)
+        # logdet = np.sum(np.log(np.diag(self.V_d_chol)))
+        logdet = np.sum(np.log(np.diag(self.V_d_chol[0])))
         self.loglike = -logdet - 0.5*Q

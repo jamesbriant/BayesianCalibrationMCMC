@@ -12,7 +12,7 @@ from mcmc.data import Data
 # from mcmc.chain import Chain
 from mcmc.parameter import Parameter
 
-from mcmc.models.kennedyohagan.model1b import Model
+from mcmc.models.kennedyohagan.model1 import Model
 
 
 
