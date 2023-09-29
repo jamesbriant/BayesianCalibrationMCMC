@@ -108,7 +108,7 @@ class KennedyOHagan(BaseModel):
         self.V_d[data.n:, data.n:] += self._sigma_epsilon_eta
 
         try:
-            self.V_d_chol, _ = cho_factor(self.V_d, lower=self._lower)
+            self.V_d_chol, _ = cho_factor(self.V_d, lower=self._lower, check_finite=False)
         except Exception as e:
             print("The eigenvalues of self.V_d are:")
             print(np.linalg.eigvalsh(self.V_d))
@@ -146,7 +146,12 @@ class KennedyOHagan(BaseModel):
     def calc_loglike(self, data: Data) -> None:
         """Kennedy & O'Hagan model log-likelihood
         """
-        u = solve_triangular(self.V_d_chol, data.d-self.m_d, lower=self._lower)
+        u = solve_triangular(
+            self.V_d_chol, 
+            data.d-self.m_d, 
+            lower=self._lower,
+            check_finite=False
+        )
         Q = np.sum(u**2)
         logdet = np.sum(np.log(np.diag(self.V_d_chol)))
         self.loglike = -logdet - 0.5*Q
