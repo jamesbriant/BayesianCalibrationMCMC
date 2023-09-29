@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 import numpy as np
-from scipy.linalg import cho_factor, cho_solve
+from scipy.linalg import cho_factor, solve_triangular
 
 from mcmc.data import Data
 from mcmc.models.base import BaseModel
@@ -25,12 +25,15 @@ class KennedyOHagan(BaseModel):
     def __init__(
         self, 
         params: dict,
+        lower: bool = True,
         *args, 
         **kwargs
     ):
         """
         """
         super().__init__(params, *args, **kwargs)
+
+        self._lower = lower
 
         self.m_d = None
         self.V_d = None
@@ -103,15 +106,13 @@ class KennedyOHagan(BaseModel):
         self.V_d += self._sigma_eta
         self.V_d[:data.n, :data.n] += self._sigma_delta + self._sigma_epsilon
         self.V_d[data.n:, data.n:] += self._sigma_epsilon_eta
-        
-        self.V_d_chol = cho_factor(self.V_d)
 
-        # try:
-        #     self.V_d_chol = np.linalg.cholesky(self.V_d)
-        # except Exception as e:
-        #     print("The eigenvalues of self.V_d are:")
-        #     print(np.linalg.eigvalsh(self.V_d))
-        #     raise e
+        try:
+            self.V_d_chol, _ = cho_factor(self.V_d, lower=self._lower)
+        except Exception as e:
+            print("The eigenvalues of self.V_d are:")
+            print(np.linalg.eigvalsh(self.V_d))
+            raise e
         
     
     @abstractmethod
@@ -145,9 +146,7 @@ class KennedyOHagan(BaseModel):
     def calc_loglike(self, data: Data) -> None:
         """Kennedy & O'Hagan model log-likelihood
         """
-        # u = np.linalg.solve(self.V_d_chol, data.d - self.m_d)
-        u = cho_solve(self.V_d_chol, data.d - self.m_d)
+        u = solve_triangular(self.V_d_chol, data.d-self.m_d, lower=self._lower)
         Q = np.sum(u**2)
-        # logdet = np.sum(np.log(np.diag(self.V_d_chol)))
-        logdet = np.sum(np.log(np.diag(self.V_d_chol[0])))
+        logdet = np.sum(np.log(np.diag(self.V_d_chol)))
         self.loglike = -logdet - 0.5*Q
