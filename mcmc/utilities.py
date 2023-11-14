@@ -1,6 +1,11 @@
 from typing import Tuple
 
 import numpy as np
+from scipy.spatial.distance import pdist, cdist
+from scipy.special import comb
+
+import jax.numpy as jnp
+from jax import jit
 
 from mcmc.data import Data
 from mcmc.parameter import Parameter
@@ -24,72 +29,74 @@ def convert_to_nparray(values) -> np.ndarray:
     return values
 
 
-# def dist_matrix(data: Data, theta: Parameter) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-#     """Calculates and returns the upper triangle of the distance matrix as a flattened array. Each
-#     row corresponds to a single location and each column to a different variable.
-#     """
-#     D = np.zeros((
-#         int((data.n + data.m) * (data.n + data.m - 1)/2),
-#         data.p + data.q
-#     ))
-#     indices = np.triu_indices(n=data.n+data.m, k=1)
+def dist_matrix1(data: Data, theta: Parameter) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    """Calculates and returns the upper triangle of the distance matrix as a flattened array. Each
+    row corresponds to a single location and each column to a different variable.
+    """
+    D = np.zeros((
+        int((data.n + data.m) * (data.n + data.m - 1)/2),
+        data.p + data.q
+    ))
+    indices = np.triu_indices(n=data.n+data.m, k=1)
 
-#     #the variables a and b are used to iterate through the rows of the matrix.
-#     #The [a,b] range of integers references the start and end block of each
-#         # observation x observation
-#         # observation x simulation
-#         # simulation x simulation
-#     #in an interative manor thus making it much easier to build the matrix.
+    #the variables a and b are used to iterate through the rows of the matrix.
+    #The [a,b] range of integers references the start and end block of each
+        # observation x observation
+        # observation x simulation
+        # simulation x simulation
+    #in an interative manor thus making it much easier to build the matrix.
 
-#     b = -1
-#     for i in range(data.n-1):
-#         # observation x observation
-#         a = b+1
-#         b = a+data.n-2-i
+    b = -1
+    for i in range(data.n-1):
+        # observation x observation
+        a = b+1
+        b = a+data.n-2-i
 
-#         #control variables
-#         D[a:(b+1), :data.p] = (data.x_f[i, :] - data.x_f[(i+1):, :])**2
-#         #calibration variables
-#             #are all 0 so nothing needed here.
-
-
-#         # observation x simulation
-#         a = b+1
-#         b = a+data.m-1
-
-#         #control variables
-#         D[a:(b+1), :data.p] = (data.x_f[i, :] - data.x_c[:, :])**2
-#         #calibration variables
-#         D[a:(b+1), data.p:] = (theta.values - data.t[:, :])**2
+        #control variables
+        D[a:(b+1), :data.p] = (data.x_f[i, :] - data.x_f[(i+1):, :])**2
+        #calibration variables
+            #are all 0 so nothing needed here.
 
 
+        # observation x simulation
+        a = b+1
+        b = a+data.m-1
 
-#     # observation x simulation
-#     #fill in the final row
-#     a = b+1
-#     b = a+data.m-1
-#     #control variables
-#     D[a:(b+1), :data.p] = (data.x_f[data.n-1, :] - data.x_c[:, :])**2
-#     #calibration variables
-#     D[a:(b+1), data.p:] = (theta.values - data.t[:, :])**2
+        #control variables
+        D[a:(b+1), :data.p] = (data.x_f[i, :] - data.x_c[:, :])**2
+        #calibration variables
+        D[a:(b+1), data.p:] = (theta.values - data.t[:, :])**2
 
 
 
-#     # simulation x simulation
-#     for i in range(data.m-1):
-#         a = b+1
-#         b = a+data.m-2-i
-
-#         #control variables
-#         D[a:(b+1), :data.p] = (data.x_c[i, :] - data.x_c[(i+1):, :])**2
-#         #calibration variables
-#         D[a:(b+1), data.p:] = (data.t[i, :] - data.t[(i+1):, :])**2
-
-
-#     return D, indices
+    # observation x simulation
+    #fill in the final row
+    a = b+1
+    b = a+data.m-1
+    #control variables
+    D[a:(b+1), :data.p] = (data.x_f[data.n-1, :] - data.x_c[:, :])**2
+    #calibration variables
+    D[a:(b+1), data.p:] = (theta.values - data.t[:, :])**2
 
 
-def dist_matrix(data: Data, theta: Parameter) -> Tuple[np.ndarray, np.ndarray]:
+
+    # simulation x simulation
+    for i in range(data.m-1):
+        a = b+1
+        b = a+data.m-2-i
+
+        #control variables
+        D[a:(b+1), :data.p] = (data.x_c[i, :] - data.x_c[(i+1):, :])**2
+        #calibration variables
+        D[a:(b+1), data.p:] = (data.t[i, :] - data.t[(i+1):, :])**2
+
+
+    return D, indices
+
+
+
+
+def dist_matrix2(data: Data, theta: Parameter) -> Tuple[np.ndarray, np.ndarray]:
     """Calculates and returns the upper triangle of the distance matrix as a flattened array. Each
     row corresponds to a single location and each column to a different variable.
     """
@@ -107,7 +114,7 @@ def dist_matrix(data: Data, theta: Parameter) -> Tuple[np.ndarray, np.ndarray]:
         # observation x observation
         # observation x simulation
         # simulation x simulation
-    #in an interative manor thus making it much easier to build the matrix.
+    #in an interative manner thus making it much easier to build the matrix.
 
     b = -1
     for i in range(data.n-1):
@@ -156,3 +163,50 @@ def dist_matrix(data: Data, theta: Parameter) -> Tuple[np.ndarray, np.ndarray]:
 
 
     return D, D_delta
+
+
+
+
+
+def dist_matrix3(data: Data, theta: Parameter) -> Tuple[np.ndarray, ...]:
+    """Calculates and returns the upper triangle of the distance matrix as a flattened array. Each
+    row corresponds to a single location and each column to a different variable.
+    """
+    D = np.empty((
+        int((data.n + data.m) * (data.n + data.m - 1)/2),
+        data.p + data.q
+    ))
+    D_delta = np.empty((
+        int((data.n) * (data.n - 1)/2),
+        data.p
+    ))
+
+    for i in range(data.p):
+        D[:, i] = pdist(
+            np.concatenate((data.x_f[:, i], data.x_c[:, i])).reshape(-1,1),
+            'sqeuclidean'
+        )
+        D_delta[:, i] = pdist(
+            data.x_f[:, i].reshape(-1,1),
+            'sqeuclidean'
+        )
+
+    for i in range(data.p, data.p+data.q):
+        D[:, i] = pdist(
+            np.concatenate((np.tile(theta.values[i-data.p], data.n).reshape(-1,1), data.t)), 
+            'sqeuclidean'
+        )
+
+    def triangle_diff(n, i):
+        return comb(n,2) - comb(n-1-i,2)
+
+    D_B_I = np.array(
+        [[triangle_diff(data.n, i) + data.m*i + np.arange(0, data.m)] for i in range(data.n)], 
+        dtype=int
+    ).flatten()
+
+    return D, D_delta, D_B_I
+
+
+def obs_sim_dist(data: Data, theta: float) -> np.ndarray:
+    return cdist(np.tile(theta, data.n).reshape(-1,1), data.t, 'sqeuclidean')

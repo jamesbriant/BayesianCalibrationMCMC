@@ -1,7 +1,8 @@
 from mcmc.data import Data
 from mcmc.models.kennedyohagan.kennedyohagan import KennedyOHagan
 from mcmc.parameter import Parameter
-from mcmc.utilities import dist_matrix
+from mcmc.utilities import dist_matrix3 as dist_matrix
+from mcmc.utilities import obs_sim_dist
 
 import numpy as np
 from scipy.stats import beta, gamma
@@ -32,7 +33,7 @@ class Model(KennedyOHagan):
         ############################################################
         #Place your code here
         
-        self.D_eta, self.D_delta = dist_matrix(data, self.params['theta'])
+        self.D_eta, self.D_delta, self.D_B_I = dist_matrix(data, self.params['theta'])
         self.I_eta = np.triu_indices(n=data.n+data.m, k=1)
         self.I_delta = np.triu_indices(n=data.n, k=1)
 
@@ -59,7 +60,8 @@ class Model(KennedyOHagan):
         #Place your code here
 
         if param.name == "theta":
-            self.D_eta, self.D_delta = dist_matrix(data, param)
+            # self.D_eta, self.D_delta = dist_matrix(data, param)
+            self.D_eta[self.D_B_I, data.p+index] = obs_sim_dist(data, param.values[index]).flatten()
             self.calc_m_d(data)
             self.calc_sigma_eta(data)
             self.calc_V_d(data)

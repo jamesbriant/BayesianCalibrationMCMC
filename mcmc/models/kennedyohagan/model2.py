@@ -1,7 +1,9 @@
+# Same as model1.py BUT uses a different parameterisation for the beta/omega parameters
+
 from mcmc.data import Data
 from mcmc.models.kennedyohagan.kennedyohagan import KennedyOHagan
 from mcmc.parameter import Parameter
-from mcmc.utilities import dist_matrix
+from mcmc.utilities import dist_matrix2 as dist_matrix
 
 import numpy as np
 from scipy.stats import beta, gamma
