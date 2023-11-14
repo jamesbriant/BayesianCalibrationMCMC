@@ -1,7 +1,10 @@
+# Same as model1.py BUT uses hard-coded pdf up to proportionality for prior distns
+
 from mcmc.data import Data
 from mcmc.models.kennedyohagan.kennedyohagan import KennedyOHagan
 from mcmc.parameter import Parameter
-from mcmc.utilities import dist_matrix
+from mcmc.utilities import dist_matrix2 as dist_matrix
+# from mcmc.utilities import obs_sim_dist
 
 import numpy as np
 # from scipy.stats import beta, gamma
