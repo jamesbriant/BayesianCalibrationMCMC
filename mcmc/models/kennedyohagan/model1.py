@@ -2,10 +2,14 @@ from mcmc.data import Data
 from mcmc.models.kennedyohagan.kennedyohagan import KennedyOHagan
 from mcmc.parameter import Parameter
 from mcmc.utilities import dist_matrix3 as dist_matrix
-from mcmc.utilities import obs_sim_dist
+# from mcmc.utilities import obs_sim_dist
+from mcmc.utilities import obs_sim_dist_jitted as obs_sim_dist
 
 import numpy as np
 from scipy.stats import beta, gamma
+
+import jax.numpy as jnp
+from jax import jit
 
 class Model(KennedyOHagan):
     """
@@ -60,8 +64,13 @@ class Model(KennedyOHagan):
         #Place your code here
 
         if param.name == "theta":
-            # self.D_eta, self.D_delta = dist_matrix(data, param)
-            self.D_eta[self.D_B_I, data.p+index] = obs_sim_dist(data, param.values[index]).flatten()
+            # self.D_eta[self.D_B_I, data.p+index] = obs_sim_dist(data, param.values[index]).flatten()
+
+            self.D_eta[self.D_B_I, data.p+index] = obs_sim_dist(
+                data.t, 
+                jnp.tile(param.values[index], data.n).reshape(-1,1)
+            ).block_until_ready()
+
             self.calc_m_d(data)
             self.calc_sigma_eta(data)
             self.calc_V_d(data)
@@ -142,12 +151,20 @@ class Model(KennedyOHagan):
     def calc_sigma_eta(self, data: Data) -> None:
         """
         """
-        self._sigma_eta = np.zeros((data.n+data.m, data.n+data.m))
-        beta_eta = -4*np.log(self.params['omega_eta'].values)
-        self._sigma_eta[self.I_eta] += np.exp(-self.D_eta @ beta_eta)/self.params['lambda_eta'].values[0]
-        self._sigma_eta += self._sigma_eta.T
-        self._sigma_eta += (1/self.params['lambda_eta'].values[0]) * np.eye(data.n+data.m)
-  
+        # self._sigma_eta = np.zeros((data.n+data.m, data.n+data.m))
+        # beta_eta = -4*np.log(self.params['omega_eta'].values)
+        # self._sigma_eta[self.I_eta] += np.exp(-self.D_eta @ beta_eta)/self.params['lambda_eta'].values[0]
+        # self._sigma_eta += self._sigma_eta.T
+        # self._sigma_eta += (1/self.params['lambda_eta'].values[0]) * np.eye(data.n+data.m)
+
+        self._sigma_eta = np.array(calc_sigma_eta(
+            jnp.zeros((data.n+data.m, data.n+data.m)),
+            jnp.eye(data.n+data.m), 
+            self.params['omega_eta'].values,
+            self.params['lambda_eta'].values[0],
+            self.D_eta,
+            self.I_eta
+        ))
     
     def calc_sigma_delta(self, data: Data) -> None:
         """
@@ -179,3 +196,29 @@ class Model(KennedyOHagan):
             self.logpost = -9e99
         else:
             super().calc_logpost(data=data)
+
+
+# @jit
+# def calc_sigma_eta(nm, omega_eta, lambda_eta, D_eta, I_eta) -> None:
+#     """
+#     """
+#     beta_eta = -4*jnp.log(omega_eta)
+
+#     _sigma_eta = jnp.zeros((nm, nm))
+#     _sigma_eta = _sigma_eta.at[I_eta].add(jnp.exp(jnp.matmul(-D_eta, beta_eta))/lambda_eta)
+#     _sigma_eta = _sigma_eta + _sigma_eta.T
+#     _sigma_eta = _sigma_eta + (1/lambda_eta)*jnp.eye(nm)
+
+#     return _sigma_eta
+
+@jit
+def calc_sigma_eta(sigma_eta, eye, omega_eta, lambda_eta, D_eta, I_eta) -> None:
+    """
+    """
+    beta_eta = -4*jnp.log(omega_eta)
+
+    _sigma_eta = sigma_eta.at[I_eta].add(jnp.exp(jnp.matmul(-D_eta, beta_eta))/lambda_eta)
+    _sigma_eta = _sigma_eta + _sigma_eta.T
+    _sigma_eta = _sigma_eta + (1/lambda_eta)*eye
+
+    return _sigma_eta

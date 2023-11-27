@@ -5,7 +5,7 @@ from scipy.spatial.distance import pdist, cdist
 from scipy.special import comb
 
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, vmap
 
 from mcmc.data import Data
 from mcmc.parameter import Parameter
@@ -208,5 +208,18 @@ def dist_matrix3(data: Data, theta: Parameter) -> Tuple[np.ndarray, ...]:
     return D, D_delta, D_B_I
 
 
-def obs_sim_dist(data: Data, theta: float) -> np.ndarray:
-    return cdist(np.tile(theta, data.n).reshape(-1,1), data.t, 'sqeuclidean')
+# def obs_sim_dist(data: Data, theta: float) -> np.ndarray:
+#     return cdist(np.tile(theta, data.n).reshape(-1,1), data.t, 'sqeuclidean')
+
+
+
+########## The numpy implementation using cdist is just as fast when n=10,m=255
+def sqeuclidean(x, y):
+    return (x - y)**2
+
+sqeuclidean_vmapped = vmap(vmap(sqeuclidean, in_axes=(None, 0)), in_axes=(0, None))
+
+def obs_sim_dist(data_t, theta_vec):
+    return sqeuclidean_vmapped(theta_vec, data_t).flatten()
+
+obs_sim_dist_jitted = jit(obs_sim_dist)
