@@ -74,7 +74,7 @@ model = Model(
 ##### DATA #####
 ################
 
-DATAFIELD = np.loadtxt('data/simple_field_medium.csv', delimiter=',', dtype=np.float32)
+DATAFIELD = np.loadtxt('data/simple_field.csv', delimiter=',', dtype=np.float32)
 DATACOMP = np.loadtxt('data/simple_comp.csv', delimiter=',', dtype=np.float32)
 
 xf = np.reshape(DATAFIELD[:, 0], (-1, 1))
