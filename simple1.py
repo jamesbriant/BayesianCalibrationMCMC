@@ -74,7 +74,7 @@ model = Model(
 ##### DATA #####
 ################
 
-DATAFIELD = np.loadtxt('data/simple_field.csv', delimiter=',', dtype=np.float32)
+DATAFIELD = np.loadtxt('data/simple_field_medium.csv', delimiter=',', dtype=np.float32)
 DATACOMP = np.loadtxt('data/simple_comp.csv', delimiter=',', dtype=np.float32)
 
 xf = np.reshape(DATAFIELD[:, 0], (-1, 1))
@@ -128,7 +128,7 @@ proposal_widths = {
 }
 
 mcmc = MCMC(
-    max_iter = 5000,
+    max_iter = 1000,
     model = model,
     data = data,
     proposal_widths = proposal_widths
