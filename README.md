@@ -1,6 +1,6 @@
-# GP-toy-problems
+# Bayesian Calibration MCMC
 
-A generic Metropolis-Hastings random walk MCMC tool for testing a python implementation of a simple Kennedy & O'Hagan (2001)[^1] model written in MATLAB.
+A generic Metropolis-Hastings random walk MCMC tool for testing a python implementation of the Kennedy & O'Hagan (2001)[^1] Bayesian Calibration for Computer Models framework. The implementation design was inspired by a MATLAB implementation from the early 2000s.
 
 ## Custom Models
 
